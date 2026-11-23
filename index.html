@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medalhão 3D DevSecOps — Dupla Face em Alto-Relevo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 42%, #f6f4f0 0%, #e5e0d8 65%, #d6cfc4 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #2f2318;
+      user-select: none;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #hud {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      width: 315px;
+      background: rgba(250, 248, 245, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(79, 58, 38, 0.18);
+      border-radius: 14px;
+      padding: 16px 18px;
+      box-shadow: 0 12px 32px rgba(47, 35, 24, 0.14);
+      z-index: 10;
+    }
+    #hud h1 {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #4F3A26;
+      margin-bottom: 3px;
+    }
+    #hud p.subtitle {
+      font-size: 11.5px;
+      color: #76604b;
+      margin-bottom: 14px;
+      line-height: 1.35;
+    }
+    .control-group {
+      margin-bottom: 13px;
+    }
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #5e4731;
+      margin-bottom: 6px;
+    }
+    .btn-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .btn-row-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    button {
+      appearance: none;
+      border: 1px solid rgba(79, 58, 38, 0.22);
+      background: #ffffff;
+      color: #4F3A26;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 7px 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      line-height: 1.2;
+    }
+    button:hover {
+      background: #f3eee7;
+      border-color: #4F3A26;
+    }
+    button.active {
+      background: #4F3A26;
+      color: #EFECE8;
+      border-color: #4F3A26;
+      box-shadow: 0 2px 6px rgba(79, 58, 38, 0.25);
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: #4F3A26;
+      cursor: pointer;
+    }
+    input[type="number"] {
+      width: 100%;
+      border: 1px solid rgba(79, 58, 38, 0.22);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+      color: #4F3A26;
+      background: #fff;
+    }
+    .legend {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px solid rgba(79, 58, 38, 0.12);
+      font-size: 11px;
+      color: #5e4731;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 600;
+    }
+    .swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+    }
+    #hint {
+      position: fixed;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(47, 35, 24, 0.78);
+      color: #EFECE8;
+      font-size: 11.5px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      pointer-events: none;
+      letter-spacing: 0.02em;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <aside id="hud">
+    <h1>Medalhão 3D DevSecOps</h1>
+    <p class="subtitle">Peça dupla face em alto-relevo • Geometria CAD validada</p>
+
+    <div class="control-group">
+      <div class="control-label"><span>Modo de Renderização</span></div>
+      <div class="btn-row">
+        <button id="btn-solid-wire" class="active">Sólido + Malha</button>
+        <button id="btn-wire">Apenas Malha</button>
+        <button id="btn-solid">Sólido Polido</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="control-label"><span>Estrutura da Base</span></div>
+      <div class="btn-row-2">
+        <button id="btn-base-plate" class="active">Placa Base</button>
+        <button id="btn-base-cutout">Vazado</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>Altura do Relevo</span>
+        <span id="relief-val">0.060</span>
+      </div>
+      <input id="relief-slider" type="range" min="0.025" max="0.140" step="0.005" value="0.060" />
+    </div>
+
+    <div class="control-group" style="margin-bottom: 10px;">
+      <div class="control-label"><span>Câmera</span></div>
+      <div class="btn-row">
+        <button id="btn-cam-front">Frente</button>
+        <button id="btn-cam-3d" class="active">Perfil 3D</button>
+        <button id="btn-cam-back">Verso</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="control-label"><span>Impressão 3D</span><span>largura (mm)</span></div>
+      <div class="btn-row-2">
+        <input id="stl-width" type="number" min="20" max="400" step="5" value="100" />
+        <button id="btn-stl">Exportar STL</button>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="swatch" style="background:#4F3A26"></span>Dev / Sec</div>
+      <div class="legend-item"><span class="swatch" style="background:#846A52"></span>Ops</div>
+      <div class="legend-item"><span class="swatch" style="background:#EFECE8"></span>Base Creme</div>
+    </div>
+  </aside>
+
+  <div id="hint">Arraste para girar 360° • Scroll para zoom • Botão direito para mover</div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+    import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+
+    // =========================================================================
+    // 1. PARÂMETROS
+    // Infinito = dois anéis (raio médio Rm) em (±Cx, 0) ligados por duas faixas
+    // retas a ±45° que se cruzam na origem. Para as faixas serem TANGENTES aos
+    // anéis (sem degrau nem sobreposição), Cx precisa ser exatamente Rm·√2.
+    // =========================================================================
+    const COLORS = { darkBrown: 0x4F3A26, medBrown: 0x846A52, cream: 0xEFECE8, wireDark: 0x261a10, wireLight: 0x9c8e7e };
+
+    const S2 = Math.SQRT1_2;
+    const Rm = 1.0;               // raio médio da faixa das setas
+    const Cx = Rm * Math.SQRT2;   // centro dos anéis (tangência exata a 45°)
+    const W = 0.33;               // meia-largura da faixa das setas
+    const G = 0.065;              // sulco creme entre peças (visível ≈ G - bevel = 0.055)
+    const C = 0.17;               // profundidade do chevron das setas
+    const BW = 0.20;              // espessura da borda externa
+    const CB = 0.10;              // chevron da borda externa
+    const M = 0.05;               // margem da placa creme além da borda
+    const BASE_HALF = 0.05;       // placa creme de z = -0.05 a +0.05
+    const LABEL_H = 0.015;        // relevo dos rótulos (≈0,25 mm numa peça de 100 mm: imprimível)
+    let reliefHeight = 0.06;
+
+    // Caminho central (laço fechado, parametrizado pelo comprimento s, sentido do fluxo):
+    // L1: origem -> tangente do anel direito                      [0, Rm]
+    // AR: anel direito, horário, 135° -> -135°                     [Rm, sA]
+    // L2: tangente inf. direita -> origem -> tangente sup. esquerda [sA, sB]  (passa por BAIXO do RELEASE)
+    // AL: anel esquerdo, anti-horário, 45° -> 315°                 [sB, sC]
+    // L3: tangente inf. esquerda -> origem                         [sC, LTOT]
+    const Q = Math.PI * Rm / 2;   // 90° de arco
+    const sA = Rm + 3 * Q;
+    const sO = sA + Rm;           // origem no trecho L2
+    const sB = sA + 2 * Rm;
+    const sC = sB + 3 * Q;
+    const LTOT = sC + Rm;
+
+    function path(s) {
+      s = ((s % LTOT) + LTOT) % LTOT;
+      if (s < Rm) return { p: [s * S2, s * S2], t: [S2, S2] };
+      if (s < sA) {
+        const a = 0.75 * Math.PI - (s - Rm) / Rm;
+        return { p: [Cx + Rm * Math.cos(a), Rm * Math.sin(a)], t: [Math.sin(a), -Math.cos(a)] };
+      }
+      if (s < sB) {
+        const d = s - sA;
+        return { p: [Cx / 2 - d * S2, -Cx / 2 + d * S2], t: [-S2, S2] };
+      }
+      if (s < sC) {
+        const a = 0.25 * Math.PI + (s - sB) / Rm;
+        return { p: [-Cx + Rm * Math.cos(a), Rm * Math.sin(a)], t: [-Math.sin(a), Math.cos(a)] };
+      }
+      const d = s - sC;
+      return { p: [-Cx / 2 + d * S2, -Cx / 2 + d * S2], t: [S2, S2] };
+    }
+
+    // Ponto deslocado `o` à esquerda do sentido do fluxo
+    function at(s, o) {
+      const { p, t } = path(s);
+      return new THREE.Vector2(p[0] - o * t[1], p[1] + o * t[0]);
+    }
+
+    // Faixa entre offsets o1..o2 de s0 a s1, com bico em chevron (head) e encaixe em V (tail)
+    function ribbon(s0, s1, o1, o2, head = 0, tail = 0) {
+      const n = Math.max(2, Math.ceil((s1 - s0) / 0.02));
+      const pts = [];
+      for (let i = 0; i <= n; i++) pts.push(at(s0 + (s1 - s0) * i / n, o2));
+      if (head) pts.push(at(s1 + head, (o1 + o2) / 2));
+      for (let i = n; i >= 0; i--) pts.push(at(s0 + (s1 - s0) * i / n, o1));
+      if (tail) pts.push(at(s0 + tail, (o1 + o2) / 2));
+      return pts;
+    }
+
+    // Recorte pelo semiplano x >= 0 (sign = +1) ou x <= 0 (sign = -1) — Sutherland–Hodgman
+    function clipX(pts, sign) {
+      const out = [];
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        const fa = sign * a.x, fb = sign * b.x;
+        if (fa >= 0) out.push(a);
+        if ((fa >= 0) !== (fb >= 0)) out.push(a.clone().lerp(b, fa / (fa - fb)));
+      }
+      return out;
+    }
+
+    // Remove pontos repetidos/fechamento duplicado: evita triângulos degenerados
+    // no chanfro (riscos escuros atravessando as peças na malha)
+    function clean(pts) {
+      const out = [];
+      for (const p of pts) if (!out.length || p.distanceTo(out[out.length - 1]) > 1e-4) out.push(p);
+      while (out.length > 2 && out[0].distanceTo(out[out.length - 1]) <= 1e-4) out.pop();
+      // pontos colineares (trechos retos) geram triângulos de área zero na tampa
+      return out.filter((p, i) => {
+        const a = out[(i + out.length - 1) % out.length], b = out[(i + 1) % out.length];
+        return Math.abs((p.x - a.x) * (b.y - p.y) - (p.y - a.y) * (b.x - p.x)) > 1e-8;
+      });
+    }
+
+    // =========================================================================
+    // 2. SETAS + BORDA EXTERNA
+    // =========================================================================
+    function buildLogoShapes() {
+      const h = G / 2;
+      // Anel esquerdo (escuro), fluxo anti-horário
+      const PLAN    = ribbon(sO + W + G, sB - h, -W, W, C, 0);      // cauda reta rente ao sulco do RELEASE
+      const CODE    = ribbon(sB + h, sB + Q - h, -W, W, C, C);
+      const BUILD   = ribbon(sB + Q + h, sB + 2 * Q - h, -W, W, C, C);
+      const TEST    = ribbon(sB + 2 * Q + h, sC - h, -W, W, C, C);
+      // Faixa central + anel direito (médio), fluxo horário
+      const RELEASE = ribbon(sC + h - LTOT, Rm - h, -W, W, C, C);
+      const DEPLOY  = ribbon(Rm + h, Rm + Q - h, -W, W, C, C);
+      const OPERATE = ribbon(Rm + Q + h, Rm + 2 * Q - h, -W, W, C, C);
+      const MONITOR = ribbon(Rm + 2 * Q + h, sA - h, -W, W, C, C);
+      // parte final do PLAN (marrom escuro): sai do MONITOR e passa por baixo do RELEASE
+      const PLAN_END = ribbon(sA + h, sO - W - G, -W, W, 0, C);
+
+      // Borda externa: 4 segmentos por lado; juntas em 90°/180°/270° (esq.) e 90°/0°/-90° (dir.);
+      // as duas metades se encontram em x = 0 no vale superior e no vértice inferior.
+      const bi = W + G, bo = W + G + BW;
+      const q4 = Math.PI / 4 * Rm;
+      const jl = [sO, sB + q4, sB + 3 * q4, sB + 5 * q4, LTOT];
+      const jr = [0, Rm + q4, Rm + 3 * q4, Rm + 5 * q4, sO];
+      const borderL = [], borderR = [];
+      for (let i = 0; i < 4; i++) {
+        const first = i === 0, last = i === 3;
+        const head = last ? 0 : CB, tail = first ? 0 : CB;
+        const a = first ? 0 : h, b = last ? 0 : h;
+        borderL.push(clipX(ribbon(jl[i] + a, jl[i + 1] - b, -bo, -bi, head, tail), -1));
+        borderR.push(clipX(ribbon(jr[i] + a, jr[i + 1] - b, bi, bo, head, tail), +1));
+      }
+
+      const toShape = pts => new THREE.Shape(clean(pts));
+      return {
+        dark: [PLAN_END, PLAN, CODE, BUILD, TEST, ...borderL].map(toShape),
+        med: [RELEASE, DEPLOY, OPERATE, MONITOR, ...borderR].map(toShape)
+      };
+    }
+
+    // Placa creme: contorno externo da borda + margem M, com uma ponte (aba) que sobe do
+    // vale superior e sustenta o "Sec"; opcionalmente vazada nos centros
+    function buildBaseShape(cutout, secBox) {
+      const D = W + G + BW + M;
+      const n = 400, right = [], left = [];
+      for (let i = 0; i <= n; i++) right.push(at(D + (sO - 2 * D) * i / n, D));
+      for (let i = 0; i <= n; i++) left.push(at(sO + D + (LTOT - sO - 2 * D) * i / n, -D));
+      const pts = [...right, ...left.reverse()];
+      // contorno começa e termina no vale (0, D·√2): corta o trecho |x| < a e insere a aba
+      const a = secBox.max.x + 0.14, top = secBox.max.y + 0.12, r = 0.1;
+      while (pts[0].x < a) pts.shift();
+      while (pts[pts.length - 1].x > -a) pts.pop();
+      for (let i = 0; i <= 8; i++) {
+        const t = Math.PI - Math.PI / 2 * i / 8;
+        pts.push(new THREE.Vector2(-a + r + r * Math.cos(t), top - r + r * Math.sin(t)));
+      }
+      for (let i = 0; i <= 8; i++) {
+        const t = Math.PI / 2 - Math.PI / 2 * i / 8;
+        pts.push(new THREE.Vector2(a - r + r * Math.cos(t), top - r + r * Math.sin(t)));
+      }
+      const sh = new THREE.Shape(clean(pts));
+      if (cutout) {
+        for (const cx of [-Cx, Cx]) {
+          const hole = new THREE.Path();
+          hole.absarc(cx, 0, Rm - W - M, 0, Math.PI * 2, true);
+          sh.holes.push(hole);
+        }
+      }
+      return sh;
+    }
+
+    // =========================================================================
+    // 3. TIPOGRAFIA (fonte real; texto curvo deformado ponto a ponto sobre o raio)
+    // =========================================================================
+    // fn recebe coordenadas centradas no bounding box do texto
+    function mapText(font, text, size, fn) {
+      const raw = font.generateShapes(text, size).map(s => s.extractPoints(10));
+      const box = new THREE.Box2();
+      raw.forEach(r => r.shape.forEach(p => box.expandByPoint(p)));
+      const c = box.getCenter(new THREE.Vector2());
+      const tx = p => fn(p.x - c.x, p.y - c.y, box);
+      return raw.map(r => {
+        const sh = new THREE.Shape(clean(r.shape.map(tx)));
+        r.holes.forEach(hp => sh.holes.push(new THREE.Path(clean(hp.map(tx)))));
+        return sh;
+      });
+    }
+
+    function straightText(font, text, size, cx, cy, angle = 0) {
+      const cs = Math.cos(angle), sn = Math.sin(angle);
+      return mapText(font, text, size, (x, y) => new THREE.Vector2(cx + x * cs - y * sn, cy + x * sn + y * cs));
+    }
+
+    // Texto no raio Rm em volta de (ccx, 0), centrado no ângulo phi.
+    // Topo/laterais: letras com o topo para fora (BUILD sobe, OPERATE desce);
+    // base do anel: topo para dentro (TEST, MONITOR legíveis da esquerda p/ direita).
+    function curvedText(font, text, size, ccx, phi) {
+      const outward = Math.sin(phi) > -0.5;
+      return mapText(font, text, size, (x, y) => {
+        const a = outward ? phi - x / Rm : phi + x / Rm;
+        const r = outward ? Rm + y : Rm - y;
+        return new THREE.Vector2(ccx + r * Math.cos(a), r * Math.sin(a));
+      });
+    }
+
+    function buildLabelShapes(font) {
+      const size = 0.165, h = G / 2;
+      const mid = (s0, s1) => (s0 + s1) / 2 + C / 2;   // centro visual (meio + meio chevron)
+      const ang = (s, cx) => { const p = path(s).p; return Math.atan2(p[1], p[0] - cx); };
+      const curved = [
+        ['CODE',    -Cx, mid(sB, sB + Q)],
+        ['BUILD',   -Cx, mid(sB + Q, sB + 2 * Q)],
+        ['TEST',    -Cx, mid(sB + 2 * Q, sC)],
+        ['DEPLOY',   Cx, mid(Rm, Rm + Q)],
+        ['OPERATE',  Cx, mid(Rm + Q, Rm + 2 * Q)],
+        ['MONITOR',  Cx, mid(Rm + 2 * Q, sA)]
+      ];
+      const shapes = curved.flatMap(([t, cx, s]) => curvedText(font, t, size, cx, ang(s, cx)));
+      // RELEASE sobe a 45° pelo centro; PLAN é lido de cima-esquerda para baixo-direita
+      shapes.push(...straightText(font, 'RELEASE', size, 0, 0, Math.PI / 4));
+      const pPlan = path((sO + W + G + sB - h) / 2 + C / 2).p;
+      shapes.push(...straightText(font, 'PLAN', size, pPlan[0], pPlan[1], -Math.PI / 4));
+      return shapes;
+    }
+
+    // =========================================================================
+    // 4. CENA, MATERIAIS E MONTAGEM DUPLA FACE
+    // =========================================================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(36, window.innerWidth / window.innerHeight, 0.1, 100);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 3.0;
+    controls.maxDistance = 16.0;
+
+    scene.add(new THREE.HemisphereLight(0xfffdf9, 0xc8bfb2, 1.35));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.65);
+    keyLight.position.set(4.5, 6.2, 7.5);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.bias = -0.0005;
+    keyLight.shadow.normalBias = 0.02;
+    scene.add(keyLight);
+    const fillLight = new THREE.DirectionalLight(0xf7efe4, 0.85);
+    fillLight.position.set(-5.5, -3.5, 5.0);
+    scene.add(fillLight);
+    const backLight = new THREE.DirectionalLight(0xffffff, 1.45);
+    backLight.position.set(-3.5, 4.5, -7.5);
+    scene.add(backLight);
+    const backFillLight = new THREE.DirectionalLight(0xf5ede1, 0.75);
+    backFillLight.position.set(4.5, -4.0, -5.0);
+    scene.add(backFillLight);
+
+    const matDark = new THREE.MeshStandardMaterial({ color: COLORS.darkBrown, roughness: 0.46, metalness: 0.06 });
+    const matMed = new THREE.MeshStandardMaterial({ color: COLORS.medBrown, roughness: 0.48, metalness: 0.05 });
+    const matCream = new THREE.MeshStandardMaterial({ color: COLORS.cream, roughness: 0.54, metalness: 0.02 });
+    const wireMatDark = new THREE.LineBasicMaterial({ color: COLORS.wireDark, transparent: true, opacity: 0.24 });
+    const wireMatCream = new THREE.LineBasicMaterial({ color: COLORS.wireLight, transparent: true, opacity: 0.28 });
+
+    const medallion = new THREE.Group();
+    scene.add(medallion);
+
+    let wireframes = [];
+    let renderMode = 'solid-wire';
+    let cutoutMode = false;
+    let font = null;
+
+    // Chanfro de 0.005 (bevelOffset negativo gera triângulos invertidos nas pontas de
+    // chevron -> riscos na malha). Faixa z: [-bt, depth]; a parte negativa fica embutida na placa.
+    function part(shapes, depth, mat, { bevel = true, wire = true, cream = false } = {}) {
+      const bt = bevel ? Math.min(0.01, depth * 0.2) : 0;
+      const geom = new THREE.ExtrudeGeometry(shapes, {
+        depth: depth - bt,
+        bevelEnabled: bevel,
+        bevelThickness: bt,
+        bevelSize: bt / 2,
+        bevelOffset: 0,
+        bevelSegments: 2,
+        curveSegments: 12
+      });
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.castShadow = mesh.receiveShadow = true;
+      const g = new THREE.Group();
+      g.add(mesh);
+      if (wire) {
+        const line = new THREE.LineSegments(new THREE.EdgesGeometry(geom, 28), cream ? wireMatCream : wireMatDark);
+        g.add(line);
+        wireframes.push({ line, mesh });
+      }
+      return g;
+    }
+
+    // Uma face em alto-relevo construída em z >= 0 (topo da placa = 0)
+    function buildFace(h, logo, labels, typo) {
+      const face = new THREE.Group();
+      face.add(part(logo.dark, h, matDark));
+      face.add(part(logo.med, h, matMed));
+      if (typo.length) face.add(part(typo, h, matDark));
+      const lbl = part(labels, LABEL_H, matCream, { bevel: false, wire: false });
+      lbl.position.z = h;
+      face.add(lbl);
+      return face;
+    }
+
+    function rebuild() {
+      if (!font) return;
+      medallion.traverse(o => o.geometry && o.geometry.dispose());
+      medallion.clear();
+      wireframes = [];
+      const h = reliefHeight;
+
+      // "Sec" acima do vale superior, apoiado na ponte creme da placa
+      const sec = mapText(font, 'Sec', 0.42, (x, y, box) =>
+        new THREE.Vector2(x, y + 1.40 + (box.max.y - box.min.y) / 2));
+      const secBox = new THREE.Box2().setFromPoints(sec.flatMap(s => s.getPoints()));
+
+      // Placa creme: z de -BASE_HALF a +BASE_HALF
+      const base = part([buildBaseShape(cutoutMode, secBox)], BASE_HALF * 2, matCream, { bevel: false, cream: true });
+      base.position.z = -BASE_HALF;
+      medallion.add(base);
+
+      const logo = buildLogoShapes();
+      const labels = buildLabelShapes(font);
+      const typo = [...straightText(font, 'Dev', 0.4, -Cx, 0), ...straightText(font, 'Ops', 0.4, Cx, 0)];
+      const faceTypo = cutoutMode ? [] : typo;
+
+      // Vazado: Dev/Ops ficariam soltos nas duas faces -> viram peças únicas que atravessam
+      // a espessura, legíveis pela frente; no verso não há texto sobreposto.
+      const front = buildFace(h, logo, labels, faceTypo);
+      front.position.z = BASE_HALF;
+      medallion.add(front);
+
+      // Verso: a mesma face girada 180° em Y -> legível quando vista por trás
+      const back = buildFace(h, logo, labels, faceTypo);
+      back.rotation.y = Math.PI;
+      back.position.z = -BASE_HALF;
+      medallion.add(back);
+
+      // "Sec": peça única atravessando a medalha -> de costas aparece ao contrário (espelhado)
+      const secPiece = part(sec, 2 * (BASE_HALF + h), matDark);
+      secPiece.position.z = -(BASE_HALF + h);
+      medallion.add(secPiece);
+
+      if (cutoutMode) {
+        const through = part(typo, BASE_HALF * 2 + h, matDark);
+        through.position.z = -BASE_HALF;
+        medallion.add(through);
+      }
+
+      applyRenderMode(renderMode);
+    }
+
+    function applyRenderMode(mode) {
+      renderMode = mode;
+      wireframes.forEach(({ line, mesh }) => {
+        mesh.visible = mode !== 'wire';
+        line.visible = mode !== 'solid';
+      });
+    }
+
+    new FontLoader().load(
+      'https://cdn.jsdelivr.net/npm/three@0.169.0/examples/fonts/helvetiker_bold.typeface.json',
+      f => { font = f; rebuild(); }
+    );
+
+    // =========================================================================
+    // 5. EXPORTAÇÃO STL — um arquivo por cor (multimaterial), em mm, mesmas coordenadas
+    //    nos 3 arquivos para alinharem sozinhos no fatiador. Peça deitada no plano XY.
+    // =========================================================================
+    function exportSTL() {
+      if (!font) return;
+      const mm = parseFloat(document.getElementById('stl-width').value) || 100;
+      medallion.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(medallion);
+      const k = mm / (box.max.x - box.min.x);
+      const S = new THREE.Matrix4().makeScale(k, k, k);
+      const exporter = new STLExporter();
+      const files = [['creme', matCream], ['marrom-escuro', matDark], ['marrom-medio', matMed]];
+      for (const [name, mat] of files) {
+        const group = new THREE.Group();
+        medallion.traverse(o => {
+          if (o.isMesh && o.material === mat) {
+            const m = new THREE.Matrix4().multiplyMatrices(S, o.matrixWorld);
+            group.add(new THREE.Mesh(o.geometry.clone().applyMatrix4(m)));
+          }
+        });
+        const data = exporter.parse(group, { binary: true });
+        group.traverse(o => o.geometry && o.geometry.dispose());
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([data], { type: 'model/stl' }));
+        a.download = `devsecops-${name}-${mm}mm.stl`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      }
+    }
+
+    // =========================================================================
+    // 6. INTERFACE E CÂMERA
+    // =========================================================================
+    let camAnim = null;
+    function animateCameraTo(pos, target) {
+      camAnim = { startPos: camera.position.clone(), endPos: pos, startTarget: controls.target.clone(), endTarget: target, progress: 0 };
+    }
+    function setActive(ids, active) {
+      ids.forEach(id => document.getElementById(id).classList.toggle('active', id === active));
+    }
+    const on = (id, fn) => document.getElementById(id).addEventListener('click', fn);
+
+    const modeIds = ['btn-solid-wire', 'btn-wire', 'btn-solid'];
+    on('btn-solid-wire', () => { setActive(modeIds, 'btn-solid-wire'); applyRenderMode('solid-wire'); });
+    on('btn-wire',       () => { setActive(modeIds, 'btn-wire');       applyRenderMode('wire'); });
+    on('btn-solid',      () => { setActive(modeIds, 'btn-solid');      applyRenderMode('solid'); });
+
+    const baseIds = ['btn-base-plate', 'btn-base-cutout'];
+    on('btn-base-plate',  () => { setActive(baseIds, 'btn-base-plate');  cutoutMode = false; rebuild(); });
+    on('btn-base-cutout', () => { setActive(baseIds, 'btn-base-cutout'); cutoutMode = true;  rebuild(); });
+
+    const reliefVal = document.getElementById('relief-val');
+    document.getElementById('relief-slider').addEventListener('input', e => {
+      reliefHeight = parseFloat(e.target.value);
+      reliefVal.textContent = reliefHeight.toFixed(3);
+      rebuild();
+    });
+
+    on('btn-stl', exportSTL);
+
+    const camIds = ['btn-cam-front', 'btn-cam-3d', 'btn-cam-back'];
+    const CAM = {
+      // alvo deslocado em x para o medalhão não ficar sob o painel da esquerda
+      front: [new THREE.Vector3(-0.7, 0.25, 8.2), new THREE.Vector3(-0.7, 0.25, 0)],
+      p3d:   [new THREE.Vector3(-3.3, -2.4, 7.2), new THREE.Vector3(-0.7, 0.15, 0)],
+      back:  [new THREE.Vector3(0.7, 0.25, -8.2), new THREE.Vector3(0.7, 0.25, 0)]
+    };
+    on('btn-cam-front', () => { setActive(camIds, 'btn-cam-front'); animateCameraTo(...CAM.front); });
+    on('btn-cam-3d',    () => { setActive(camIds, 'btn-cam-3d');    animateCameraTo(...CAM.p3d); });
+    on('btn-cam-back',  () => { setActive(camIds, 'btn-cam-back');  animateCameraTo(...CAM.back); });
+
+    camera.position.copy(CAM.p3d[0]);
+    controls.target.copy(CAM.p3d[1]);
+    controls.update();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    renderer.setAnimationLoop(() => {
+      if (camAnim) {
+        camAnim.progress = Math.min(1, camAnim.progress + 0.045);
+        const e = 1 - Math.pow(1 - camAnim.progress, 3);
+        camera.position.lerpVectors(camAnim.startPos, camAnim.endPos, e);
+        controls.target.lerpVectors(camAnim.startTarget, camAnim.endTarget, e);
+        if (camAnim.progress >= 1) camAnim = null;
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>
