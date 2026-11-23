@@ -19,26 +19,22 @@ An interactive 3D simulator for the DevSecOps infinity logo (Dev · Sec · Ops, 
 
 ### What you need to install
 
-**Nothing.** The simulator is a single HTML file. It needs:
-
+- **Python, latest version** (3.x), from <https://www.python.org/downloads/>. It runs the local server that opens the simulator. On Windows, tick **"Add python.exe to PATH"** during installation. Check it with `python --version`.
+- **Git**, to clone the repository. You can also download it as a ZIP: **Code → Download ZIP**.
 - A modern browser with WebGL (Chrome, Edge, Firefox or Safari).
 - An internet connection. three.js `0.169.0` and the Helvetiker Bold font load from the jsDelivr CDN.
 
-Optional: Python 3 or Node.js, to serve the folder locally (recommended).
-
 ### How to run
-
-Use a local server (recommended):
 
 ```bash
 git clone https://github.com/mbastida43/devsecops_logo3D_simulator.git
 cd devsecops_logo3D_simulator
-python -m http.server 8000        # or: npx serve .
+python -m http.server 8000
 ```
 
-Then open <http://localhost:8000>.
+Then open <http://localhost:8000> in the browser. To stop the server, press `Ctrl+C` in the terminal.
 
-You can also open `index.html` directly in the browser.
+> On Windows, if `python` is not found, use `py -m http.server 8000`.
 
 ### How to use
 
@@ -81,26 +77,22 @@ Simulador 3D interativo do logo DevSecOps em forma de infinito (Dev · Sec · Op
 
 ### O que precisa instalar
 
-**Nada.** O simulador é um único arquivo HTML. Ele precisa de:
-
+- **Python na versão mais recente** (3.x), em <https://www.python.org/downloads/>. Ele roda o servidor local que abre o simulador. No Windows, marque **"Add python.exe to PATH"** na instalação. Confira com `python --version`.
+- **Git**, para clonar o repositório. Também dá para baixar em ZIP: **Code → Download ZIP**.
 - Um navegador moderno com WebGL (Chrome, Edge, Firefox ou Safari).
 - Conexão com a internet. O three.js `0.169.0` e a fonte Helvetiker Bold são carregados do CDN jsDelivr.
 
-Opcional: Python 3 ou Node.js, para servir a pasta localmente (recomendado).
-
 ### Como rodar
-
-Com um servidor local (recomendado):
 
 ```bash
 git clone https://github.com/mbastida43/devsecops_logo3D_simulator.git
 cd devsecops_logo3D_simulator
-python -m http.server 8000        # ou: npx serve .
+python -m http.server 8000
 ```
 
-Depois abra <http://localhost:8000>.
+Depois abra <http://localhost:8000> no navegador. Para parar o servidor, aperte `Ctrl+C` no terminal.
 
-Também dá para abrir o `index.html` direto no navegador.
+> No Windows, se o comando `python` não for encontrado, use `py -m http.server 8000`.
 
 ### Como usar
 
